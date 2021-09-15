@@ -1,0 +1,6 @@
+# Julia: Manifest files
+Manifest.toml
+
+# Project: traces
+**/*.trace
+

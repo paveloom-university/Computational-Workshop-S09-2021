@@ -1,0 +1,294 @@
+\input{../../shared/preamble.tex}
+
+\hypersetup{pdftitle={Вычислительный практикум (9-ый семестр, 2021)}}
+
+\begin{document}
+
+\subsubsection*{Вычислительный практикум (9-ый семестр, 2021)}
+\section*{Интегральные уравнения первого рода}
+\subsubsection*{Руководитель: А. Г. Доронина \hspace{2em} Выполнил: П. Л. Соболев}
+
+\vspace{3em}
+
+\subsection*{Задачи}
+
+\begin{itemize}
+  \setlength\itemsep{-0.1em}
+  \item Получить решение интегрального уравнения первого рода при заданных интервалах интегрирования, ядре и правой части.
+\end{itemize}
+
+\subsection*{Теория}
+
+Интегральное уравнение первого рода:
+
+\begin{equation}
+  \int_a^b K(x, s) \, z(s) \, ds = u(x)
+\end{equation}
+
+Будем полагать, что ядро $ K(x, s) $ есть вещественная, непрерывная в области $ \{ a \leqslant s \leqslant b; \, c \leqslant x \leqslant d \} $ функция. Возьмем в качестве стабилизирующего функционала $ \Omega \, [z] $ функционал вида
+
+\begin{equation}
+  \Omega \, [z] = \int_a^b \{ z^2 + p(z')^2 \} \, ds,
+\end{equation}
+
+где $ p $ --- положительное число. \npar
+
+Обозначим за $ F_n $ класс непрерывных на $ [a, b] $ функций $ z(s) $, имеющих обобщенные производные до $ n $-го порядка, интегрируемые с квадратом на $ [a, b] $. Пусть точное решение $ z_\textup{т}(s) $ принадлежит $ F_1 $ и удовлетворяет краевым условиям: $ z'(a) = 0 $, $ z'(b) = 0 $. Тогда в качестве регуляризованных решений $ z_{\alpha} $ уравнения (1) можно брать функции, являющиеся решениями следующей краевой задачи для уравнения Эйлера:
+
+\begin{equation}
+  \int_a^b \overline{K}(s, t) \, z(t) \, dt + \alpha \{ z(s) - p z''(s) \} = g(s),
+\end{equation}
+
+\begin{equation}
+  z'(a) = 0, z'(b) = 0,
+\end{equation}
+
+где
+
+\begin{equation}
+  \overline{K}(s, t) = \int_c^d K(x, s) \, K(x, t) \, dx, \;\; g(s) = \int_c^d K(x, s) \, u(x) \, dx
+\end{equation}
+
+Напишем разностный аналог уравнения (3) на равномерной сетке с шагом $ h $. Разобьем промежуток $ [a, b] $ на $ n $ равных частей и возьмем в качестве узловых точек сетки середины полученных отрезков, т. е. полагаем
+
+\begin{equation}
+  s_i = a + 0.5 \cdot h + (i - 1) h, \quad i = 1, 2, \ldots, n; \quad h = \frac{b - a}{n}
+\end{equation}
+
+Заменив в левой части уравнения (3) интеграл соответствующей ему интегральной суммой, например, по формуле прямоугольников, а $ z''(s) $ --- соответствующим разностным отношением, получим
+
+\begin{equation}
+  \sum_{j=1}^n \overline{K}(s_i, t_j) \, h z_j + \alpha z_i + \alpha \, \frac{2 z_i - z_{i-1} - z_{i+1}}{h^2} = g_i,
+\end{equation}
+
+где
+
+\begin{equation}
+  i = 1, 2, \ldots, n, \quad g_i = \int_c^d K(x, s_i) \, u(x) \, dx
+\end{equation}
+
+Значения $ \overline{K}(s_i, t_j) $ и $ g_i $ либо вычисляются аналитически, либо получаются с помощью соответствующих квадратурных формул. \npar
+
+При $ i = 1 $ и $ i = n $ в (7) входят не определенные ещё значения $ z_0 $ и $ z_{n+1} $. Чтобы удовлетворить граничным условиям, полагаем $ z_0 = z_1 $ и $ z_{n+1} = z_n $. Пусть $ B $ --- матрица с элементами $ B_{ij} = \overline{K}(s_i, t_j) \, h $. Тогда систему уравнений (7) относительно вектора $ z $ с компонентами $ (z_1, z_2, \ldots, z_n) $ можно записать в виде
+
+\begin{equation}
+  B_{\alpha} z \equiv Bz + \alpha C z = g,
+\end{equation}
+
+где $ g $ --- вектор с компонентами $ (g_1, g_2, \ldots, g_n) $, а $ \alpha C $ --- симметричная матрица вида
+
+\[
+\everymath{\displaystyle}
+\begin{bmatrix}
+  \alpha \left( 1 + \frac{1}{h^2} \right) & -\frac{\alpha}{h^2} & 0 & \dots & 0 & 0 \\
+  -\frac{\alpha}{h^2} & \alpha \left( 1 + \frac{2}{h^2} \right) & -\frac{\alpha}{h^2} & \dots & 0 & 0 \\
+  0 & -\frac{\alpha}{h^2} & \alpha \left( 1 + \frac{2}{h^2} \right) & \dots & 0 & 0 \\
+  \vdots & \vdots & \vdots & \ddots & \vdots & \vdots \\
+  0 & 0 & 0 & \dots & \alpha \left( 1 + \frac{2}{h^2} \right) & -\frac{\alpha}{h^2} \\
+  0 & 0 & 0 & \dots & -\frac{\alpha}{h^2} & \alpha \left( 1 + \frac{1}{h^2} \right) \\
+\end{bmatrix}
+\]
+
+Таким образом, задача сводится к решению СЛАУ (9).
+
+\subsection*{Реализация}
+
+Алгоритм реализован на языке программирования \href{https://julialang.org/}{Julia} в виде скрипта и расположен в GitLab репозитории \href{https://gitlab.com/paveloom-g/university/computational-workshop-s09-2021}{Computational Workshop S09-2021} в папке A1. Для воспроизведения результатов следуй инструкциям в файле {\footnotesize \texttt{README.md}}. \npar
+
+Для проверки алгоритма возьмем интегральное уравнение
+
+\begin{equation}
+  \int_0^1 e^{sx} \, z(s) \, ds = \frac{e^{x+1} - 1}{x + 1},
+\end{equation}
+
+которое имеет аналитическое решение $ z(s) = e^z $.
+
+\newpage
+
+\captionsetup{singlelinecheck=false, justification=justified}
+
+\begin{figure}[h!]
+\begin{lstlisting}[
+    caption=Определение ядра и правой части тестового уравнения
+]
+# Define the kernel (Test)
+K(x, s) = exp(s * x)
+
+# Define the right part of the equation (Test)
+u(x) = (exp(x + 1) - 1) / (x + 1)
+\end{lstlisting}
+\end{figure}
+
+\begin{figure}[h!]
+\begin{lstlisting}[
+  caption=Определение интервала и подготовка узлов
+]
+# Set the integration intervals
+a = 0
+b = 1
+c = 0
+d = 1
+
+# Set the number of nodes
+n = 100
+
+# Set the initial value of the regularization parameter
+α = 0.001
+
+# Calculate the step
+h = (b - a) / n
+
+# Calculate the nodes for the s argument
+s = [ a + 0.5 * h + (i - 1) * h for i in 1:n ]
+
+# Calculate the nodes for the t argument
+t = copy(s)
+\end{lstlisting}
+\end{figure}
+
+\begin{figure}[h!]
+\begin{lstlisting}[
+  caption={Вычисление вектора $ g $, подготовка других переменных}
+]
+# Compute the g vector
+g = [
+  quadgk(x -> K(x, s[i]) * u(x), c, d; rtol=1e-8)[1]
+  for i in 1:n
+]
+
+# Prepare a matrix for the computation
+Bα = Matrix{Float64}(undef, n, n)
+
+# Prepare a vector for the solution
+z = Vector{Float64}(undef, n)
+
+# Prepare a range of nodes for the residual calculation
+xr = range(c, d; length=1000)
+\end{lstlisting}
+\end{figure}
+
+\newpage
+
+Функция {\footnotesize \texttt{quadgk}} (из пакета \href{https://juliamath.github.io/QuadGK.jl/stable/}{\footnotesize \texttt{QuadGK.jl}}) вычисляет значение интеграла методом Гаусса--Кронрода. \npar
+
+Программа создает и оптимизирует функцию с параметром $ \alpha $, возвращающую значение невязки для вычисленного решения:
+
+\begin{figure}[h!]
+\begin{lstlisting}[
+  caption={Определение функции, вычисляющей невязку}
+]
+# Compute the residual of the solution with the
+# specified regularization parameter
+function residual(θ::Vector{Float64})::Float64
+    # Unpack the parameters
+    α = θ[1]
+
+    # Compute the Bα matrix
+    for i in 1:n, j in 1:n
+        αc = if (i == j == 1) || (i == j == n)
+            α * (1 + 1 / h^2)
+        elseif i == j
+            α * (1 + 2 / h^2)
+        elseif (i == j + 1) || (i + 1 == j)
+            -α / h^2
+        else
+            0
+        end
+        Bα[i, j] =
+        quadgk(
+          x -> K(x, s[i]) * K(x, t[j]), c, d; rtol=1e-8
+        )[1] * h + αc
+    end
+
+    # Compute the solution
+    z .= Symmetric(Bα) \ g
+
+    # Calculate the residual
+    r = norm(
+      [ sum(K.(x, s) .* z .* h) for x in xr ] .- u.(xr)
+    )
+
+    return r
+end
+\end{lstlisting}
+\end{figure}
+
+\newpage
+
+\begin{figure}[h!]
+\begin{lstlisting}[
+  caption={Оптимизация по значению невязки}
+]
+# Optimize over the regularization parameter
+res = Optim.optimize(
+    residual,
+    [α,],
+    LBFGS(),
+    Optim.Options(
+        show_trace = false,
+        extended_trace = true,
+        store_trace = true,
+    );
+    inplace = false,
+)
+\end{lstlisting}
+\end{figure}
+
+Полученные значения параметра регуляризации и невязки для тестового интегрального уравнения: $ \alpha = 1.5813849 \cdot 10^{-7} $,
+$r = 0.0021192 $. \npar
+
+График сравнения решений:
+
+\captionsetup{justification=centering}
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[scale=0.5]{test}
+  \caption{Сравнение точного и приближенного решений тестового интегрального уравнения}
+\end{figure}
+
+Ядро и правая часть из условий задания:
+
+\begin{equation}
+  K(x, s) = \frac{1}{1 + x + s}
+\end{equation}
+
+\begin{equation}
+  u(x) = \frac{1}{\sqrt{2 - x}} \left( \ln{\frac{2 + x}{1 + x}} + 2 \ln{\frac{\sqrt{3} + \sqrt{2 - x}}{2 + \sqrt{2 - x}}} \right)
+\end{equation}
+
+Отрезки интегрирования те же: $ [0, 1] $.
+
+\newpage
+
+\captionsetup{justification=justified}
+
+\begin{figure}[h!]
+\begin{lstlisting}[
+  caption={Определение ядра и правой части заданного уравнения}
+]
+# Define the kernel
+K(x, s) = 1 / (1 + x + s)
+
+# Define the right part of the equation
+u(x) = 1 / sqrt(2 - x) * (log((2 + x) / (1 + x)) +
+       2 * log(
+         (sqrt(3) + sqrt(2 - x)) / (2 + sqrt(2 - x)))
+       )
+\end{lstlisting}
+\end{figure}
+
+Полученные значения параметра регуляризации и невязки для заданного интегрального уравнения: $ \alpha = 2.2101166 \cdot 10^{-6} $,
+$r = 0.0007930 $. \npar
+
+График решения:
+
+\captionsetup{justification=centering}
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[scale=0.5]{assignment}
+  \caption{Приближенное решение заданного интегрального уравнения}
+\end{figure}
+
+\end{document}

@@ -1,0 +1,43 @@
+\documentclass[a4paper, oneside]{article}
+\special{pdf:minorversion 6}
+
+\usepackage[english, russian]{babel}
+
+\usepackage{fontspec}
+\setmainfont[
+  Ligatures=TeX,
+  Extension=.otf,
+  BoldFont=cmunbx,
+  ItalicFont=cmunti,
+  BoldItalicFont=cmunbi,
+]{cmunrm}
+\usepackage{unicode-math}
+
+\usepackage[bookmarks=false]{hyperref}
+\hypersetup{pdfstartview={FitH},
+            colorlinks=true,
+            linkcolor=magenta,
+            pdfauthor={Павел Соболев}}
+
+\usepackage{calrsfs}
+\DeclareMathAlphabet{\pazocal}{OMS}{zplm}{m}{n}
+
+\usepackage[table]{xcolor}
+\usepackage{booktabs}
+\usepackage{caption}
+
+\usepackage{graphicx}
+\graphicspath{ {../plots/} }
+
+\usepackage{sectsty}
+\sectionfont{\centering}
+\subsubsectionfont{\centering\normalfont\itshape}
+
+\newcommand{\npar}{\par\vspace{\baselineskip}}
+
+\usepackage{float}
+\input{../../shared/julia_font}
+\input{../../shared/julia_listings}
+\lstset{language=Julia, style=julia}
+
+\setlength{\parindent}{0pt}

@@ -1,0 +1,10 @@
+\usepackage{fontspec}
+
+\newfontfamily\JuliaMono{JuliaMono}[
+    UprightFont = *-Regular,
+    BoldFont = *-Bold,
+    Path = ../../shared/,
+    Extension = .ttf]
+\newfontface\JuliaMonoRegular[Path=../../shared/]{JuliaMono-Regular.ttf}
+\newfontface\JuliaMonoBold[Path=../../shared/]{JuliaMono-Bold.ttf}
+\setmonofont[Path=../../shared/]{JuliaMono-Medium.ttf}[Contextuals=Alternate]
