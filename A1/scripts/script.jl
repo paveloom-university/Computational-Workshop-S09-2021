@@ -1,6 +1,5 @@
 # This script solves a Fredholm equation of the first type
 
-# Print about the packages
 println('\n', " "^4, "> Loading the packages...")
 
 using LinearAlgebra # Norm
@@ -14,7 +13,6 @@ gr()
 # Change the default font for plots
 default(fontfamily = "Computer Modern", dpi=300, legend=:outerright)
 
-# Print about the computing
 println(" "^4, "> Computing the solution (Test)...")
 
 # Define the kernel (Test)
@@ -32,56 +30,52 @@ d = 1
 # Set the number of nodes
 n = 100
 
-# Set the initial value of the regularization parameter
-α = 0.001
-
 # Calculate the step
 h = (b - a) / n
 
 # Calculate the nodes for the s argument
 s = [ a + 0.5 * h + (i - 1) * h for i in 1:n ]
 
-# Calculate the nodes for the t argument
-t = copy(s)
-
-# Compute the g vector
-g = [ quadgk(x -> K(x, s[i]) * u(x), c, d; rtol=1e-8)[1] for i in 1:n ]
-
-# Prepare a matrix for the computation
-Bα = Matrix{Float64}(undef, n, n)
-
-# Prepare a vector for the solution
-z = Vector{Float64}(undef, n)
+# Set the initial value of the regularization parameter
+α = 0.001
 
 # Prepare a range of nodes for the residual calculation
 xr = range(c, d; length=1000)
 
-# Compute the residual of the solution with the specified regularization parameter
-function residual(θ::Vector{Float64})::Float64
-    # Unpack the parameters
-    α = θ[1]
+# Compute the residual of the solution with the specified number of nodes and the regularization parameter
+function calculate(n::Int, α::Float64)::Tuple{Vector{Float64}, Float64}
+    # Calculate the step
+    h = (b - a) / n
+
+    # Calculate the nodes for the s argument
+    s = [ a + 0.5 * h + (i - 1) * h for i in 1:n ]
+
+    # Calculate the nodes for the t argument
+    t = copy(s)
+
+    # Compute the g vector
+    g = [ quadgk(x -> K(x, s[i]) * u(x), c, d; rtol=1e-8)[1] for i in 1:n ]
+
+    # Prepare a matrix for the computation
+    Bα = Matrix{Float64}(undef, n, n)
 
     # Compute the Bα matrix
     for i in 1:n, j in 1:n
-        αc = if (i == j == 1) || (i == j == n)
-            α * (1 + 1 / h^2)
-        elseif i == j
-            α * (1 + 2 / h^2)
-        elseif (i == j + 1) || (i + 1 == j)
-            -α / h^2
-        else
-            0
-        end
-        Bα[i, j] = quadgk(x -> K(x, s[i]) * K(x, t[j]), c, d; rtol=1e-8)[1] * h + αc
+        Bα[i, j] = quadgk(x -> K(x, s[i]) * K(x, t[j]), c, d; rtol=1e-8)[1] * h + (i == j ? α : 0)
     end
 
     # Compute the solution
-    z .= Symmetric(Bα) \ g
+    z = Symmetric(Bα) \ g
 
     # Calculate the residual
     r = norm([ sum(K.(x, s) .* z .* h) for x in xr ] .- u.(xr))
 
-    return r
+    return z, r
+end
+
+# Compute the residual of the solution with the specified regularization parameter (optimization only)
+function residual(θ::Vector{Float64})::Float64
+    return calculate(100, θ[1])[2]
 end
 
 # Optimize over the regularization parameter
@@ -98,7 +92,7 @@ res = Optim.optimize(
 )
 
 # Save the trace and the results
-open("optimization.trace", "w") do io
+open("test_optimization.trace", "w") do io
     println(io, res.trace)
     println(
         io,
@@ -115,22 +109,38 @@ println(
     " "^6, "Residual: ", res.minimum, '\n',
 )
 
-# Print about the plotting
 println(" "^4, "> Plotting the solution (Test)...")
 
+# Recalculate the solution
+z = calculate(n, res.minimizer[1])
+
 # Plot the solution
-p = plot(s, z; label="Приближенное решение", xlabel="s", ylabel="z(s)", legend=:outerright);
+p = plot(s, z; label="Приближенное решение", xlabel="s", ylabel="z(s)");
 
 # Add the solution to the plot
 plot!(p, x -> exp(x), a, b; label="Точное решение");
 
 # Save the figure
-savefig("$(@__DIR__)/../plots/test.pdf")
+savefig(p, "$(@__DIR__)/../plots/test.pdf")
 
-# Print about the figure
 println('\n', " "^6, "* The figure `test.pdf` is saved. *", '\n')
 
-# Print about the computing
+println(" "^4, "> Plotting the residuals against the number of nodes (Test)...")
+
+# Define the `n`s to plot against
+ns = [ i for i in 10:300 ]
+
+# Calculate the residuals for these `n`s
+rs = @. getindex(calculate(ns, res.minimizer[1]), 2)
+
+# Make a plot of the residual against `n`
+p = plot(ns, rs; label="", xlabel="n", ylabel="r");
+
+# Save the figure
+savefig(p, "$(@__DIR__)/../plots/test_residual.pdf")
+
+println('\n', " "^6, "* The figure `test_residual.pdf` is saved. *", '\n')
+
 println(" "^4, "> Computing the solution (Assignment)...")
 
 # Define the kernel
@@ -157,7 +167,7 @@ res = Optim.optimize(
 )
 
 # Save the trace and the results
-open("optimization.trace", "w") do io
+open("assignment_optimization.trace", "w") do io
     println(io, res.trace)
     println(
         io,
@@ -174,14 +184,31 @@ println(
     " "^6, "Residual: ", res.minimum, '\n',
 )
 
-# Print about the plotting
 println(" "^4, "> Plotting the solution (Assignment)...")
+
+# Recalculate the solution
+z = calculate(n, res.minimizer[1])
 
 # Plot the solution
 p = plot(s, z; label="", xlabel="s", ylabel="z(s)");
 
 # Save the figure
-savefig("$(@__DIR__)/../plots/assignment.pdf")
+savefig(p, "$(@__DIR__)/../plots/assignment.pdf")
 
-# Print about the figure
 println('\n', " "^6, "* The figure `assignment.pdf` is saved. *", '\n')
+
+println(" "^4, "> Plotting the residuals against the number of nodes (Assignment)...")
+
+# Define the `n`s to plot against
+ns = [ i for i in 10:300 ]
+
+# Calculate the residuals for these `n`s
+rs = @. getindex(calculate(ns, res.minimizer[1]), 2)
+
+# Make a plot of the residual against `n`
+p = plot(ns, rs; label="", xlabel="n", ylabel="r");
+
+# Save the figure
+savefig(p, "$(@__DIR__)/../plots/assignment_residual.pdf")
+
+println('\n', " "^6, "* The figure `assignment_residual.pdf` is saved. *", '\n')
