@@ -5,13 +5,14 @@ println('\n', " "^4, "> Loading the packages...")
 using LinearAlgebra # Norm
 using Optim # Optimization
 using Plots # Plotting
+using Printf # Formatted printing
 using QuadGK # Gauss–Kronrod integration
 
 # Use the GR backend for plots
 gr()
 
 # Change the default font for plots
-default(fontfamily = "Computer Modern", dpi=300, legend=:outerright)
+default(fontfamily="Computer Modern", dpi=300, legend=:outerright)
 
 println(" "^4, "> Computing the solution (Test)...")
 
@@ -43,7 +44,7 @@ s = [ a + 0.5 * h + (i - 1) * h for i in 1:n ]
 xr = range(c, d; length=1000)
 
 # Compute the residual of the solution with the specified number of nodes and the regularization parameter
-function calculate(n::Int, α::Float64)::Tuple{Vector{Float64}, Float64}
+function calculate(n::Int, α::Float64)::Tuple{Vector{Float64},Float64}
     # Calculate the step
     h = (b - a) / n
 
@@ -69,7 +70,7 @@ function calculate(n::Int, α::Float64)::Tuple{Vector{Float64}, Float64}
 
     # Calculate the residual
     r = norm([ sum(K.(x, s) .* z .* h) for x in xr ] .- u.(xr))
-
+    
     return z, r
 end
 
@@ -84,11 +85,11 @@ res = Optim.optimize(
     [α,],
     LBFGS(),
     Optim.Options(
-        show_trace = false,
-        extended_trace = true,
-        store_trace = true,
+        show_trace=false,
+        extended_trace=true,
+        store_trace=true,
     );
-    inplace = false,
+    inplace=false,
 )
 
 # Save the trace and the results
@@ -159,11 +160,11 @@ res = Optim.optimize(
     [α,],
     LBFGS(),
     Optim.Options(
-        show_trace = false,
-        extended_trace = true,
-        store_trace = true,
+        show_trace=false,
+        extended_trace=true,
+        store_trace=true,
     );
-    inplace = false,
+    inplace=false,
 )
 
 # Save the trace and the results
@@ -212,3 +213,27 @@ p = plot(ns, rs; label="", xlabel="n", ylabel="r");
 savefig(p, "$(@__DIR__)/../plots/assignment_residual.pdf")
 
 println('\n', " "^6, "* The figure `assignment_residual.pdf` is saved. *", '\n')
+
+println(" "^4, "> Calculating the solutions for tables (Assignment)...")
+
+# Define the header
+header = "α = 1e-4" * " "^7 * "1e-5" * " "^11 * "1e-6" * " "^11 * "1e-7" *
+         " "^11 * "1e-8" * " "^11 * "1e-9" * " "^11 * "1e-10" * " "^10 * "1e-11" *
+         " "^10 * "1e-12" * " "^10 * "1e-13" * " "^10 * "1e-14" * " "^10 * "1e-15"
+
+# Calculate the solutions for different numbers of nodes and regularization parameters
+for n in [100, 200, 300]
+    data = Matrix{Float64}(undef, n, 12)
+    format = Printf.Format("%.8e "^11 * "%.8e\n")
+    open("$(@__DIR__)/../tables/$(n).dat", "w") do io
+        println(io, header)
+        for (i, α) in enumerate([1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10, 1e-11, 1e-12, 1e-13, 1e-14, 1e-15])
+            data[:, i], _ = calculate(n, α)
+        end
+        for i in 1:n
+            Printf.format(io, format, data[i, :]...)
+        end
+    end
+end
+
+println('\n', " "^6, "* Tables `100.dat`, `200.dat`, and `300.dat` are saved. *", '\n')
