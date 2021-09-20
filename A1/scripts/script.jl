@@ -223,14 +223,16 @@ header = "α = 1e-4" * " "^7 * "1e-5" * " "^11 * "1e-6" * " "^11 * "1e-7" *
 
 # Calculate the solutions for different numbers of nodes and regularization parameters
 for n in [100, 200, 300]
-    data = Matrix{Float64}(undef, n, 12)
+    step = Int(n * 0.05)
+    data = Matrix{Float64}(undef, 20, 12)
     format = Printf.Format("%.8e "^11 * "%.8e\n")
     open("$(@__DIR__)/../tables/$(n).dat", "w") do io
         println(io, header)
         for (i, α) in enumerate([1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10, 1e-11, 1e-12, 1e-13, 1e-14, 1e-15])
-            data[:, i], _ = calculate(n, α)
+            sol, _ = calculate(n, α)
+            data[:, i] = sol[1:step:end]
         end
-        for i in 1:n
+        for i in 1:20
             Printf.format(io, format, data[i, :]...)
         end
     end
