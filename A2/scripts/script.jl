@@ -1,14 +1,6 @@
 # This script solves a parabolic partial differential equation
 
-# println('\n', " "^4, "> Loading the packages...")
-
-# using Plots # Plotting
-
-# # Use the GR backend for plots
-# gr()
-
-# # Change the default font for plots
-# default(fontfamily = "Computer Modern", dpi = 300, legend = :outerright)
+using LinearAlgebra
 
 # Define the paths
 CURRENT_DIR = @__DIR__
@@ -17,6 +9,9 @@ TABLES = joinpath(ROOT_DIR, "tables")
 
 # Prepare the output directories
 mkpath(TABLES)
+
+# Define the maximum time
+T = 0.1
 
 # Define the equation's functions
 p(x) = x + 3
@@ -27,10 +22,7 @@ c(x, _) = -x
 β₁(t) = 1
 β₂(t) = 0
 
-# Define the maximum time
-T = 0.1
-
-# Define the solution's functions
+# Define the first problem's functions
 u(x, t) = x + 3t
 f(x, t) = x^2 + 3 * x * t + 2
 φ(x) = x
@@ -38,7 +30,7 @@ f(x, t) = x^2 + 3 * x * t + 2
 β(t) = 1 + 3t
 
 "Check if a solution will be stable on the specified grid"
-function is_stable(N, M; implicit = false)::Bool
+function is_stable(N, M)::Bool
     A = maximum(p, 0:0.0001:1)
     h = 1 / N
     τ = T / M
@@ -55,10 +47,6 @@ function find_stable(N)::Int
     return M
 end
 
-# Define sets for numbers of nodes
-N = [5, 10, 20]
-M = find_stable.(N)
-
 "Calculate the value of the differential operator L"
 function L(um, x, t, h, i, k)::Float64
     return p(x[i] + h / 2) * (um[k, i+1] - um[k, i]) / h^2 -
@@ -68,25 +56,58 @@ function L(um, x, t, h, i, k)::Float64
 end
 
 "Solve the problem for the specified grid, return the solution matrix"
-function solve(N, M, h, τ, x, t)::Matrix{Float64}
+function solve(N, M, h, τ, x, t; σ = 0)::Matrix{Float64}
     # Prepare a matrix for the solution
     # (number of columns is the number of nodes for x's)
     um = Matrix{Float64}(undef, M + 1, N + 1)
     # Compute the first layer
-    um[1, :] .= φ(x)
-    # Compute other layers
-    for k = 2:M+1
-        # Compute for i in 2:N
-        for i = 2:N
-            um[k, i] = um[k-1, i] +
-                       τ * (L(um, x, t, h, i, k - 1) +
-                            f(x[i], t[k-1]))
+    um[1, :] .= φ.(x)
+    if σ == 0
+        # Use the explicit scheme for other layers
+        for k = 2:M+1
+            # Compute for i in 2:N
+            for i = 2:N
+                um[k, i] = um[k-1, i] +
+                           τ * (L(um, x, t, h, i, k - 1) +
+                                f(x[i], t[k-1]))
+            end
+            # Compute the rest
+            um[k, 1] = (α(t[k]) + α₂(t[k]) * (4 * um[k, 2] - um[k, 3]) / (2h)) /
+                       (α₁(t[k]) + 3 * α₂(t[k]) / (2h))
+            um[k, N+1] = (β(t[k]) + β₂(t[k]) * (4 * um[k, N] - um[k, N-1]) / (2h)) /
+                         (β₁(t[k]) + 3 * β₂(t[k]) / (2h))
         end
-        # Compute the rest
-        um[k, 1] = (α(t[k]) + α₂(t[k]) * (4 * um[k, 2] - um[k, 3]) / (2h)) /
-                   (α₁(t[k]) + 3 * α₂(t[k]) / (2h))
-        um[k, N+1] = (β(t[k]) + β₂(t[k]) * (4 * um[k, N] - um[k, N-1]) / (2h)) /
-                     (β₁(t[k]) + 3 * β₂(t[k]) / (2h))
+    else
+        # Use the implicit scheme for other layers
+        for k = 2:M+1
+            # Compute the linear system's matrix
+            tm = Tridiagonal(
+                # A's
+                [
+                    [σ * (p(x[i] - h / 2) / h^2 - b(x[i], t[k]) / (2h)) for i = 2:N]
+                    -β₂(t[k]) / h
+                ],
+                # B's
+                [
+                    α₁(t[k]) + α₂(t[k]) / h
+                    -[1 / τ + σ * ((p(x[i] + h / 2) + p(x[i] - h / 2)) / h^2 - c(x[i], t[i])) for i = 2:N]
+                    β₁(t[k]) + β₂(t[k]) / h
+                ],
+                # C's
+                [
+                    -α₂(t[k]) / h
+                    [σ * (p(x[i] + h / 2) / h^2 + b(x[i], t[k]) / (2h)) for i = 2:N]
+                ],
+            )
+            # Compute the linear system's right-hand side vector
+            g = [
+                α(t[k])
+                [-um[k-1, i] / τ - (1 - σ) * L(um, x, t, h, i, k - 1) - f(x[i], t[k] - (1 - σ) * τ) for i = 2:N]
+                β(t[k])
+            ]
+            # Compute the solution of the linear system
+            um[k, :] = tm \ g
+        end
     end
     return um
 end
@@ -109,32 +130,62 @@ function max_difference(um, x, t)::Float64
 end
 
 "Create the TeX tables and write them to disk"
-function tables(um, N, M)
-    open(joinpath(TABLES, "$N, $M.tex"), "w") do io
-        # Create and write the table with the solution grid
+function tables(dir, digits, um, N, M)
+    # Prepare the output directories
+    OUTPUT_DIR = joinpath(TABLES, dir)
+    mkpath(OUTPUT_DIR)
+    # Create and write the table with the solution grid
+    open(joinpath(OUTPUT_DIR, "$N, $M.tex"), "w") do io
         for k in Int.([1:M/5:M+1]...)
             s = "& "
             for i in Int.([1:N/5:N+1]...)
-                s = "$(s)$(sprint(show, round(um[k, i]; digits=2))) & "
+                s = "$(s)$(sprint(show, round(um[k, i]; digits))) & "
             end
             s = "$(s)\\\\"
             println(io, s)
         end
     end
-    # Find the biggest difference between the nodes
-    # max_difference(um, x, t)
 end
 
-# For each grid
-for l in eachindex(N)
-    # Compute the steps
-    h = 1 / N[l]
-    τ = T / M[l]
-    # Compute the nodes
-    x = [j * h for j = 0:N[l]]
-    t = [j * τ for j = 0:M[l]]
-    # Solve the problem
-    um = solve(N[l], M[l], h, τ, x, t)
-    # Create and write the tables
-    tables(um, N[l], M[l])
+"""
+Solve the specified problem for different grids,
+create the TeX tables and write them to disk
+"""
+function solve_all(dir, digits)
+    # Define grids
+    N = [5, 10, 20]
+    Mₑ = find_stable.(N)
+    Mᵢ = repeat([Int(1 / (0.1 / 100))], length(N))
+    # For each grid
+    for l in eachindex(N)
+        # Compute the steps
+        h = 1 / N[l]
+        τₑ = T / Mₑ[l]
+        τᵢ = T / Mᵢ[l]
+        # Compute the nodes
+        x = [j * h for j = 0:N[l]]
+        tₑ = [j * τₑ for j = 0:Mₑ[l]]
+        tᵢ = [j * τᵢ for j = 0:Mᵢ[l]]
+        # Solve the problem with the explicit scheme
+        um = solve(N[l], Mₑ[l], h, τₑ, x, tₑ)
+        # Create and write the tables
+        tables(joinpath(dir, "explicit"), digits, um, N[l], Mₑ[l])
+        # Solve the problem with the implicit scheme
+        um = solve(N[l], Mᵢ[l], h, τᵢ, x, tᵢ; σ = 0.5)
+        # Create and write the tables
+        tables(joinpath(dir, "implicit"), digits, um, N[l], Mᵢ[l])
+    end
 end
+
+# Solve the first problem
+solve_all("x + 3t", 2)
+
+# Define the second problem's functions
+u(x, t) = x^3 + t^3
+f(x, t) = x^4 + x * t^3 - 9 * x^2 + 3 * t^2 - 18 * x
+φ(x) = x^3
+α(t) = 0
+β(t) = 1 + t^3
+
+# Solve the second problem
+solve_all("x^3 + t^3", 6)
