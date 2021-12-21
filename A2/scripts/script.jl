@@ -13,7 +13,7 @@ mkpath(TABLES)
 # Define the maximum time
 T = 0.1
 
-# Define the equation's functions
+# Define the differential equation's functions
 p(x) = x + 3
 b(_, _) = 0
 c(x, _) = -x
@@ -137,9 +137,9 @@ function tables(dir, digits, um, N, M)
     # Create and write the table with the solution grid
     open(joinpath(OUTPUT_DIR, "$N, $M.tex"), "w") do io
         for k in Int.([1:M/5:M+1]...)
-            s = "& "
+            s = ""
             for i in Int.([1:N/5:N+1]...)
-                s = "$(s)$(sprint(show, round(um[k, i]; digits))) & "
+                s = "$(s)& \$ $(sprint(show, round(um[k, i]; digits))) \$ "
             end
             s = "$(s)\\\\"
             println(io, s)
@@ -152,6 +152,8 @@ Solve the specified problem for different grids,
 create the TeX tables and write them to disk
 """
 function solve_all(dir, digits)
+    # Print the output directory
+    println('\n', " "^5, "> Output for u(x, t) = ", dir)
     # Define grids
     N = [5, 10, 20]
     Mₑ = find_stable.(N)
@@ -168,12 +170,40 @@ function solve_all(dir, digits)
         tᵢ = [j * τᵢ for j = 0:Mᵢ[l]]
         # Solve the problem with the explicit scheme
         um = solve(N[l], Mₑ[l], h, τₑ, x, tₑ)
+        # Print info about the solution
+        println(
+            '\n',
+            " "^5, "σ: 0", '\n',
+            " "^5, "N: ", N[l], '\n',
+            " "^5, "M: ", Mₑ[l], '\n',
+            " "^5, "Δu: ", max_difference(um, x, tₑ)
+        )
         # Create and write the tables
-        tables(joinpath(dir, "explicit"), digits, um, N[l], Mₑ[l])
-        # Solve the problem with the implicit scheme
+        tables(joinpath(dir, "σ = 0"), digits, um, N[l], Mₑ[l])
+        # Solve the problem with the implicit scheme (σ = 0.5)
         um = solve(N[l], Mᵢ[l], h, τᵢ, x, tᵢ; σ = 0.5)
+        # Print info about the solution
+        println(
+            '\n',
+            " "^5, "σ: 0.5", '\n',
+            " "^5, "N: ", N[l], '\n',
+            " "^5, "M: ", Mᵢ[l], '\n',
+            " "^5, "Δu: ", max_difference(um, x, tᵢ)
+        )
         # Create and write the tables
-        tables(joinpath(dir, "implicit"), digits, um, N[l], Mᵢ[l])
+        tables(joinpath(dir, "σ = 0.5"), digits, um, N[l], Mᵢ[l])
+        # Solve the problem with the implicit scheme (σ = 1)
+        um = solve(N[l], Mᵢ[l], h, τᵢ, x, tᵢ; σ = 1.0)
+        # Print info about the solution
+        println(
+            '\n',
+            " "^5, "σ: 1.0", '\n',
+            " "^5, "N: ", N[l], '\n',
+            " "^5, "M: ", Mᵢ[l], '\n',
+            " "^5, "Δu: ", max_difference(um, x, tᵢ)
+        )
+        # Create and write the tables
+        tables(joinpath(dir, "σ = 1.0"), digits, um, N[l], Mᵢ[l])
     end
 end
 
@@ -189,3 +219,5 @@ f(x, t) = x^4 + x * t^3 - 9 * x^2 + 3 * t^2 - 18 * x
 
 # Solve the second problem
 solve_all("x^3 + t^3", 6)
+
+println()
