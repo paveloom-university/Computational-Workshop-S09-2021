@@ -33,6 +33,7 @@
 \sectionfont{\centering}
 \subsubsectionfont{\centering\normalfont\itshape}
 
+\newcommand{\su}{\vspace{-0.5em}}
 \newcommand{\npar}{\par\vspace{\baselineskip}}
 
 \usepackage{float}
@@ -41,3 +42,19 @@
 \lstset{language=Julia, style=julia}
 
 \setlength{\parindent}{0pt}
+
+\makeatletter
+\newenvironment{sqcases}{%
+  \matrix@check\sqcases\env@sqcases
+}{%
+  \endarray\right.%
+}
+\def\env@sqcases{%
+  \let\@ifnextchar\new@ifnextchar
+  \left\lbrack
+  \def\arraystretch{1.2}%
+  \array{@{}l@{\vspace{0.2em}\quad}l@{}}%
+}
+\makeatother
+
+\usepackage{diagbox}
