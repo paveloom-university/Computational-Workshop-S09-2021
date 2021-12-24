@@ -29,26 +29,23 @@ digits = 4
 
 "Compute the value of the differential operator L"
 function L(U, x, y, h_x, h_y, i, j)::Float64
-    return p(x[i] + h_x / 2, y[j]) * (U[i+1, j] - U[i, j]) / h_x^2 -
-           p(x[i] - h_x / 2, y[j]) * (U[i, j] - U[i-1, j]) / h_x^2 +
-           q(x[i], y[j] + h_y / 2) * (U[i, j+1] - U[i, j]) / h_y^2 -
-           q(x[i], y[j] - h_y / 2) * (U[i, j] - U[i, j-1]) / h_y^2
+    return Λ₁(U, x, y, h_x, i, j) + Λ₂(U, x, y, h_y, i, j)
 end
 
 "Compute the value of the differential operator Λ₁"
-function Λ₁(U, x, y, h_x, h_y, i, j)::Float64
+function Λ₁(U, x, y, h_x, i, j)::Float64
     return p(x[i] + h_x / 2, y[j]) * (U[i+1, j] - U[i, j]) / h_x^2 -
            p(x[i] - h_x / 2, y[j]) * (U[i, j] - U[i-1, j]) / h_x^2
 end
 
 "Compute the value of the differential operator Λ₂"
-function Λ₂(U, x, y, h_x, h_y, i, j)::Float64
+function Λ₂(U, x, y, h_y, i, j)::Float64
     return q(x[i], y[j] + h_y / 2) * (U[i, j+1] - U[i, j]) / h_y^2 -
            q(x[i], y[j] - h_y / 2) * (U[i, j] - U[i, j-1]) / h_y^2
 end
 
-"Compute Ⲝ, which is needed to compute an optimal number of iterations"
-function compute_ksi(l_x, l_y, h_x, h_y)::Float64
+"Compute ξ, which is needed to compute an optimal number of iterations"
+function compute_xi(l_x, l_y, h_x, h_y)::Float64
     rx = 0:0.001:l_x
     ry = 0:0.001:l_y
     pairs = [(x, y) for x in rx, y in ry]
@@ -70,23 +67,21 @@ end
 "Initialize a new matrix and compute the boundary values"
 function boundary_values(N, M, x, y)::Matrix{Float64}
     # Prepare a matrix for the solution
-    U = Matrix{Float64}(undef, N + 1, M + 1)
+    U = zeros(N + 1, M + 1)
     # Compute the boundary values
     U[:, 1] .= u.(x, 0)
     U[:, M+1] .= u.(x, l_y)
     U[1, 2:M] .= u.(0, y[2:M])
     U[N+1, 2:M] .= u.(l_x, y[2:M])
-    # Fill the rest with zeros
-    U[2:N, 2:M] .= 0
     return U
 end
 
 "Iterate using the simple iteration method"
-function simple_iteration(Uₖ₋₁, Ⲝ, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix{Float64},Int}
+function simple_iteration(Uₖ₋₁, ξ, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix{Float64},Int}
     # Prepare a new matrix
     Uₖ = copy(Uₖ₋₁)
     # Compute the optimal number of iterations
-    m = ceil(Int, log(1 / ε) / (2Ⲝ))
+    m = ceil(Int, log(1 / ε) / (2ξ))
     # Iterate enough times to achieve desired precision
     for _ in 1:m
         # Compute values at the inner nodes
@@ -102,18 +97,18 @@ function simple_iteration(Uₖ₋₁, Ⲝ, ε, N, M, h_x, h_y, x, y)::Tuple{Matr
                         f(x[i], y[j])) /
                        (k₁ + k₂ + k₃ + k₄)
         end
-        # Reassign the current iteration as a previous one
+        # Reassign the current iteration as the previous one
         Uₖ₋₁ = Uₖ
     end
     return Uₖ, m
 end
 
 "Iterate using the Seidel's method"
-function seidel(Uₖ₋₁, Ⲝ, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix{Float64},Int}
+function seidel(Uₖ₋₁, ξ, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix{Float64},Int}
     # Prepare a new matrix
     Uₖ = copy(Uₖ₋₁)
     # Compute the optimal number of iterations
-    m = ceil(Int, log(1 / ε) / (4Ⲝ))
+    m = ceil(Int, log(1 / ε) / (4ξ))
     # Iterate enough times to achieve desired precision
     for _ in 1:m
         # Compute values at the inner nodes
@@ -129,18 +124,18 @@ function seidel(Uₖ₋₁, Ⲝ, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix{Float64
                         f(x[i], y[j])) /
                        (k₁ + k₂ + k₃ + k₄)
         end
-        # Reassign the current iteration as a previous one
+        # Reassign the current iteration as the previous one
         Uₖ₋₁ = Uₖ
     end
     return Uₖ, m
 end
 
 "Iterate using the upper relaxation method"
-function upper_relaxation(Uₖ₋₁, Ⲝ, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix{Float64},Int}
+function upper_relaxation(Uₖ₋₁, ξ, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix{Float64},Int}
     # Prepare a new matrix
     Uₖ = copy(Uₖ₋₁)
     # Compute the optimal number of iterations
-    m = ceil(Int, log(1 / ε) / sqrt(Ⲝ))
+    m = ceil(Int, log(1 / ε) / sqrt(ξ))
     # Define ω in (0,2), which affects the speed of convergence
     ω = 1.0
     # Iterate enough times to achieve desired precision
@@ -159,7 +154,7 @@ function upper_relaxation(Uₖ₋₁, Ⲝ, ε, N, M, h_x, h_y, x, y)::Tuple{Matr
                             f(x[i], y[j])) /
                        (k₁ + k₂ + k₃ + k₄)
         end
-        # Reassign the current iteration as a previous one
+        # Reassign the current iteration as the previous one
         Uₖ₋₁ = Uₖ
     end
     return Uₖ, m
@@ -184,12 +179,12 @@ function triangular(Uₖ₋₁, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix{Float64}
     η = δ / Δ
     γ₁ = δ / (2 + 2 * sqrt(η))
     γ₂ = δ / (4 * sqrt(η))
-    Ⲝ = γ₁ / γ₂
+    ξ = γ₁ / γ₂
     κ₁ = ω / h_x^2
     κ₂ = ω / h_y^2
     τ = 2 / (γ₁ + γ₂)
     # Compute the optimal number of iterations
-    m = ceil(Int, log(1 / ε) / log((1 + Ⲝ) / (1 - Ⲝ)))
+    m = ceil(Int, log(1 / ε) / log((1 + ξ) / (1 - ξ)))
     # Iterate enough times to achieve desired precision
     for _ in 1:m
         # Prepare intermediate matrices
@@ -212,7 +207,7 @@ function triangular(Uₖ₋₁, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix{Float64}
         end
         # Add up the matrices
         Uₖ[2:N, 2:M] .= Uₖ₋₁[2:N, 2:M] .+ τ .* U̅[2:N, 2:M]
-        # Reassign the current iteration as a previous one
+        # Reassign the current iteration as the previous one
         Uₖ₋₁ = Uₖ
     end
     return Uₖ, m
@@ -259,7 +254,7 @@ function variable_directions(Uₖ₋₁, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix
             g = [
                 Uₖ₋₁[1, j]
                 [-Uₖ₋₁[i, j] -
-                 τ / 2 * (Λ₂(Uₖ₋₁, x, y, h_x, h_y, i, j) +
+                 τ / 2 * (Λ₂(Uₖ₋₁, x, y, h_y, i, j) +
                           f(x[i], y[j]))
                  for i in 2:N
                 ]
@@ -282,7 +277,7 @@ function variable_directions(Uₖ₋₁, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix
             g = [
                 Uₖ₋₁[i, 1]
                 [-U̅[i, j] -
-                 τ / 2 * (Λ₁(U̅, x, y, h_x, h_y, i, j) +
+                 τ / 2 * (Λ₁(U̅, x, y, h_x, i, j) +
                           f(x[i], y[j]))
                  for j in 2:M
                 ]
@@ -290,7 +285,7 @@ function variable_directions(Uₖ₋₁, ε, N, M, h_x, h_y, x, y)::Tuple{Matrix
             # Compute the solution of the linear system
             Uₖ[i, :] .= Ũ \ g
         end
-        # Reassign the current iteration as a previous one
+        # Reassign the current iteration as the previous one
         Uₖ₋₁ = Uₖ
     end
     return Uₖ, m
@@ -318,6 +313,23 @@ function tables(dir, U, N, M; digits = 8)
     end
 end
 
+"""
+Compare the approximate solution to the exact one,
+find the biggest absolute difference between the nodes
+"""
+function max_difference(U, x, y)::Float64
+    M1, N1 = size(U)
+    # Find the maximum
+    Δu = 0
+    for i = 1:N1, j = 1:M1
+        _Δu = abs(u(x[i], y[j]) - U[i, j])
+        if _Δu > Δu
+            Δu = _Δu
+        end
+    end
+    return Δu
+end
+
 # For each grid
 for l in eachindex(N)
     # Compute the steps
@@ -332,39 +344,42 @@ for l in eachindex(N)
     # Compute the nodes
     x = collect(0:h_x:1.0)
     y = collect(0:h_y:1.0)
-    # Compute Ⲝ
-    Ⲝ = compute_ksi(l_x, l_y, h_x, h_y)
+    # Compute ξ
+    ξ = compute_xi(l_x, l_y, h_x, h_y)
     # Create a new matrix and compute the boundary values
     U = boundary_values(N[l], M[l], x, y)
     # Iterate, using the simple iteration method
-    U, m = simple_iteration(U, Ⲝ, ε, N[l], M[l], h_x, h_y, x, y)
+    U, m = simple_iteration(U, ξ, ε, N[l], M[l], h_x, h_y, x, y)
     # Create and write the TeX tables
     tables("simple_iteration", U, N[l], M[l]; digits)
     # Print the info
     println(
         '\n',
         " "^5, "> Simple iteration:", '\n',
-        " "^5, "  m = ", m
+        " "^5, "  m = ", m, '\n',
+        " "^5, "  Δu = ", max_difference(U, x, y)
     )
     # Iterate, using the Seidel's method
-    U, m = seidel(U, Ⲝ, ε, N[l], M[l], h_x, h_y, x, y)
+    U, m = seidel(U, ξ, ε, N[l], M[l], h_x, h_y, x, y)
     # Create and write the TeX tables
     tables("seidel", U, N[l], M[l]; digits)
     # Print the info
     println(
         '\n',
         " "^5, "> Seidel:", '\n',
-        " "^5, "  m = ", m
+        " "^5, "  m = ", m, '\n',
+        " "^5, "  Δu = ", max_difference(U, x, y)
     )
     # Iterate, using the upper relaxation method
-    U, m = upper_relaxation(U, Ⲝ, ε, N[l], M[l], h_x, h_y, x, y)
+    U, m = upper_relaxation(U, ξ, ε, N[l], M[l], h_x, h_y, x, y)
     # Create and write the TeX tables
     tables("upper_relaxation", U, N[l], M[l]; digits)
     # Print the info
     println(
         '\n',
         " "^5, "> Upper relaxation:", '\n',
-        " "^5, "  m = ", m
+        " "^5, "  m = ", m, '\n',
+        " "^5, "  Δu = ", max_difference(U, x, y)
     )
     # Iterate, using the alternately triangular iterative method
     U, m = triangular(U, ε, N[l], M[l], h_x, h_y, x, y)
@@ -374,7 +389,8 @@ for l in eachindex(N)
     println(
         '\n',
         " "^5, "> Alternately triangular iterative method:", '\n',
-        " "^5, "  m = ", m
+        " "^5, "  m = ", m, '\n',
+        " "^5, "  Δu = ", max_difference(U, x, y)
     )
     # Iterate, using the variable directions method
     U, m = variable_directions(U, ε, N[l], M[l], h_x, h_y, x, y)
@@ -384,7 +400,8 @@ for l in eachindex(N)
     println(
         '\n',
         " "^5, "> Variable directions method:", '\n',
-        " "^5, "  m = ", m
+        " "^5, "  m = ", m, '\n',
+        " "^5, "  Δu = ", max_difference(U, x, y)
     )
 end
 
